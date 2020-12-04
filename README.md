@@ -36,3 +36,11 @@ At the current point in time no prebuild packages are offered, but you can build
 ## Monitoring
 By default, the application offers an `/metrics` endpoint at port 2112. (http://localhost:2112/metrics) This endpoint can
 be used by a prometheus server to keep taps on this application.
+
+## Roadmap
+The following (in no particular order) things _should_ be done to improve this application:
+- [] Add Slack support
+- [] Add support for OAuth based authentication for jira
+- [] Add more configurable values
+- [] Split the application in smaller chunks
+- [] Buy Elrathor some cookies
