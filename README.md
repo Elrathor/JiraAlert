@@ -44,4 +44,5 @@ The following (in no particular order) things _should_ be done to improve this a
 - [ ] Add support for OAuth based authentication for jira
 - [ ] Add more configurable values
 - [ ] Split the application in smaller chunks
+- [ ] Make the application able to run inside a container (Docker)
 - [ ] Buy Elrathor some cookies
