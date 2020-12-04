@@ -4,6 +4,8 @@ server if it's priority doesn't match a given ID.
 
 **Example usecase:** Monitoring and alerting for high and medium priority tickets within a Jira Servicedesk queue.
 
+If there's a feature missing for you, just let me know via a [feature request](https://github.com/Elrathor/JiraAlert/issues/new/choose)
+
 ## Assumptions
 Since this tool is currently still under development, some assumptions had to be made:
 1. You use a current, on premise version of Jira which still supports password based api login
