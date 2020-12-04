@@ -35,4 +35,4 @@ At the current point in time no prebuild packages are offered, but you can build
 
 ## Monitoring
 By default, the application offers an `/metrics` endpoint at port 2112. (http://localhost:2112/metrics) This endpoint can
-be used by a prometheus server keep taps on this application.
+be used by a prometheus server to keep taps on this application.
