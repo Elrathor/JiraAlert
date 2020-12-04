@@ -1,6 +1,6 @@
 # JiraAlert
 This tool offers a simple but monitored way to check a given filter for issues and send a webhook message to your mattermost
-server if it's status doesn't match a given ID.
+server if it's priority doesn't match a given ID.
 
 **Example usecase:** Monitoring and alerting for high and medium priority tickets within a Jira Servicedesk queue.
 
