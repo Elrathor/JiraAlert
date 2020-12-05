@@ -20,6 +20,8 @@ type ConfigValues struct {
     JiraCheckIntervalKey string
     WebhookUrl string
     WebhookUrlKey string
+    PrometheusPort int
+    PrometheusPortKey string
 }
 
 func (cv *ConfigValues) registerKeys() {
@@ -30,6 +32,7 @@ func (cv *ConfigValues) registerKeys() {
     cv.JiraUrlKey = "JIRA_URL"
     cv.JiraCheckIntervalKey = "JIRA_CHECK_INTERVAL"
     cv.WebhookUrlKey = "WEBHOOK_ULR"
+    cv.PrometheusPortKey = "PROMETHEUS_PORT"
 }
 
 func (cv *ConfigValues) LoadAndValidateConfig() {
@@ -68,6 +71,14 @@ func (cv *ConfigValues) LoadAndValidateConfig() {
     cv.JiraCheckInterval, err = strconv.Atoi(checkIntervalString)
     if err != nil {
         log.Fatal(cv.JiraCheckIntervalKey + " has to be a numeric value in seconds")
+    }
+
+    prometheusPortString, wasFound := os.LookupEnv(cv.PrometheusPortKey)
+    cv.validateString(cv.PrometheusPortKey, prometheusPortString, wasFound)
+
+    cv.PrometheusPort, err = strconv.Atoi(prometheusPortString)
+    if err != nil {
+        log.Fatal(cv.PrometheusPortKey + " has to be a numeric value in seconds")
     }
 }
 

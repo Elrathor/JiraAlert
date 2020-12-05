@@ -26,6 +26,8 @@ The following values have to be present inside a .env file inside the applicatio
 |JIRA_URL|The base url of the Jira instance that should be queried (required)|
 |JIRA_CHECK_INTERVAL|The numeric interval in seconds in which Jira will be queried (required)|
 |WEBHOOK_ULR|The mattermost webhook that should be notified when an alert happens (required)|
+|PROMETHEUS_PORT|The numeric port on which the Prometheus endpoint will be available (use 2112 if unsure) (required)|
+
 
 ## Installation
 At the current point in time no prebuild packages are offered, but you can build the application from source.

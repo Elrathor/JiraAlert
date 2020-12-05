@@ -84,7 +84,7 @@ func main() {
     go heartBeat(finished, client, filter)
 
     log.Println("Starting monitoring")
-    err = http.ListenAndServe(":2112", nil)
+    err = http.ListenAndServe(":"+strconv.Itoa(cv.PrometheusPort), nil)
 
     if err != nil {
         log.Fatal(err)
