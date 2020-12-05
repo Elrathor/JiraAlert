@@ -106,7 +106,7 @@ func contains(s []string, str string) bool {
 }
 
 func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
-    for range time.Tick(time.Second * 20) {
+    for range time.Tick(time.Second * time.Duration(cv.JiraCheckInterval)) {
         stopWatch := time.Now()
 
         issues, _, err := client.Issue.Search(filter.Jql, nil)

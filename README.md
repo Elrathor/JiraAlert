@@ -24,6 +24,7 @@ The following values have to be present inside a .env file inside the applicatio
 |JIRA_PASSWORD|The corresponding password the application will use to query Jira (required)|
 |JIRA_FILTER_ID|The numeric ID of the filter the application will query (required)|
 |JIRA_URL|The base url of the Jira instance that should be queried (required)|
+|JIRA_CHECK_INTERVAL|The numeric interval in seconds in which Jira will be queried (required)|
 |WEBHOOK_ULR|The mattermost webhook that should be notified when an alert happens (required)|
 
 ## Installation
