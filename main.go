@@ -1,23 +1,22 @@
 package main
 
 import (
+    ConfigValues "JiraAlert/Config"
     "bytes"
     "encoding/json"
     "github.com/andygrunwald/go-jira"
-    "github.com/joho/godotenv"
     "github.com/prometheus/client_golang/prometheus"
     "github.com/prometheus/client_golang/prometheus/promauto"
     "github.com/prometheus/client_golang/prometheus/promhttp"
     "log"
     "net/http"
-    "os"
     "strconv"
     "time"
 )
 
 //Global Values
 var knownIssues []string
-var url string
+var cv ConfigValues.ConfigValues
 
 //Prometheus Metrics
 var (
@@ -54,68 +53,22 @@ type MatterHook struct {
 }
 
 func main() {
-    // used to determine if a value was found in the config file
-    var wasFound bool
 
-    log.Println("Reading config")
-    err := godotenv.Load()
-    if err != nil {
-        log.Fatal("Error loading .env file")
-    }
-
-    log.Println("Validate config values")
-    username, wasFound := os.LookupEnv("JIRA_USERNAME")
-    if !wasFound {
-        log.Fatal("JIRA_USERNAME has to be present in the .env file")
-    } else {
-        log.Println("Username: " + username)
-    }
-
-    password, wasFound := os.LookupEnv("JIRA_PASSWORD")
-    if !wasFound {
-        log.Fatal("JIRA_PASSWORD has to be present in the .env file")
-    } else {
-        log.Println("Password: <Secret>" )
-    }
-
-    url, wasFound = os.LookupEnv("WEBHOOK_ULR")
-    if !wasFound {
-        log.Fatal("WEBHOOK_ULR has to be present in the .env file")
-    } else {
-        log.Println("Webhook URL: " + url)
-    }
-
-    jiraUrl, wasFound := os.LookupEnv("JIRA_URL")
-    if !wasFound {
-        log.Fatal("JIRA_URL has to be present in the .env file")
-    } else {
-        log.Println("Jira URL: " + jiraUrl)
-    }
-
-    filterIdString, wasFound := os.LookupEnv("JIRA_FILTER_ID")
-    if !wasFound {
-        log.Fatal("JIRA_FILTER_ID has to be present in the .env file")
-    }
-
-    filterID, err := strconv.Atoi(filterIdString)
-    if err != nil {
-        log.Fatal("JIRA_FILTER_ID has to be a numeric value")
-    } else {
-        log.Println("Filter ID: " + filterIdString)
-    }
+    cv = ConfigValues.ConfigValues{}
+    cv.LoadAndValidateConfig()
 
     log.Println("Initialize application")
     tp := jira.BasicAuthTransport{
-        Username: username,
-        Password: password,
+        Username: cv.JiraUsername,
+        Password: cv.JiraPassword,
     }
 
-    client, err := jira.NewClient(tp.Client(), jiraUrl)
+    client, err := jira.NewClient(tp.Client(), cv.JiraUrl)
     if err != nil {
         log.Fatal(err)
     }
 
-    filter, _, err := client.Filter.Get(filterID)
+    filter, _, err := client.Filter.Get(cv.JiraFilterId)
 
     if err != nil {
         log.Fatal(err)
@@ -190,7 +143,7 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
                 }
 
                 messageJson, _ := json.Marshal(message)
-                req, err := http.NewRequest("POST", url, bytes.NewBuffer(messageJson))
+                req, err := http.NewRequest("POST", cv.WebhookUrl, bytes.NewBuffer(messageJson))
                 req.Header.Set("Content-Type", "application/json")
 
                 matterMostClient := &http.Client{}
