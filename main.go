@@ -172,7 +172,7 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
 
         //Check if issue is already know if not set it to alert list and mark as know
         for _, issue := range issues {
-            if !contains(knownIssues, issue.Key) && issue.Fields.Priority.ID != "4" { // 4 = low
+            if !contains(knownIssues, issue.Key) {
                 alerts = append(alerts, issue)
                 knownIssues = append(knownIssues, issue.Key)
             }
@@ -184,8 +184,6 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
 
         //Alert for new issues
         for _, issue := range alerts {
-
-            if issue.Fields.Priority.ID != "4" {
 
                 message := MatterHook{
                     Text: ":rotating_light:  **" + issue.Fields.Priority.Name + "** " + issue.Key + " " + issue.Fields.Summary,
@@ -210,7 +208,6 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
                     mattermostCallsMade.Inc()
                 }
                 defer resp.Body.Close()
-            }
         }
     }
 
