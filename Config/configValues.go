@@ -36,6 +36,7 @@ func (cv *ConfigValues) registerKeys() {
 }
 
 func (cv *ConfigValues) LoadAndValidateConfig() {
+    cv.registerKeys()
     var wasFound bool
 
     log.Println("Reading config")
@@ -82,7 +83,7 @@ func (cv *ConfigValues) LoadAndValidateConfig() {
     }
 }
 
-func (cv ConfigValues) validateString(key string, value string, wasFound bool) {
+func (cv *ConfigValues) validateString(key string, value string, wasFound bool) {
     if !wasFound {
         log.Fatal(key + " has to be present in the .env file")
     } else {

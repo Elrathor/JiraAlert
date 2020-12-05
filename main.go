@@ -153,7 +153,7 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
                 resp, err := matterMostClient.Do(req)
 
                 stopWatchTimeElapsed = time.Since(stopWatch)
-                mattermostRequestDuration.Observe(float64(stopWatchTimeElapsed))
+                mattermostRequestDuration.Observe(float64(stopWatchTimeElapsed.Seconds()))
 
                 if err != nil {
                     panic(err)
