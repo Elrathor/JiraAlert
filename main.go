@@ -2,6 +2,7 @@ package main
 
 import (
     ConfigValues "JiraAlert/Config"
+    "JiraAlert/Util"
     "bytes"
     "encoding/json"
     "github.com/andygrunwald/go-jira"
@@ -17,6 +18,7 @@ import (
 //Global Values
 var knownIssues []string
 var cv ConfigValues.ConfigValues
+var markImmediatelyAsKnown bool //If set true, the next run will skip the alerting and mark an issue immediately as known. Will be auto reset.
 
 //Prometheus Metrics
 var (
@@ -57,6 +59,8 @@ func main() {
     cv = ConfigValues.ConfigValues{}
     cv.LoadAndValidateConfig()
 
+    markImmediatelyAsKnown = cv.DoInitialPost
+
     log.Println("Initialize application")
     tp := jira.BasicAuthTransport{
         Username: cv.JiraUsername,
@@ -93,17 +97,6 @@ func main() {
     <-finished //Wait forever ;)
 }
 
-// https://play.golang.org/p/Qg_uv_inCek
-// contains checks if a string is present in a slice
-func contains(s []string, str string) bool {
-    for _, v := range s {
-        if v == str {
-            return true
-        }
-    }
-
-    return false
-}
 
 func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
     for range time.Tick(time.Second * time.Duration(cv.JiraCheckInterval)) {
@@ -125,8 +118,13 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
 
         //Check if issue is already know if not set it to alert list and mark as know
         for _, issue := range issues {
-            if !contains(knownIssues, issue.Key) {
-                alerts = append(alerts, issue)
+            if !Util.Contains(knownIssues, issue.Key) {
+                //Marks the issues as known, without writing an alert.
+                if !markImmediatelyAsKnown {
+                    alerts = append(alerts, issue)
+                } else {
+                    markImmediatelyAsKnown = false
+                }
                 knownIssues = append(knownIssues, issue.Key)
             }
         }
