@@ -1,6 +1,6 @@
 # JiraAlert
 This tool offers a simple but monitored way to check a given filter for issues and send a webhook message to your mattermost
-server if it's priority doesn't match a given ID.
+server if a new one appears in the list.
 
 **Example usecase:** Monitoring and alerting for high and medium priority tickets within a Jira Servicedesk queue.
 
@@ -12,7 +12,6 @@ Since this tool is currently still under development, some assumptions had to be
 2. You have a user able to use the Jira api
 3. You want to be notified via a message in a Mattermost channel
 4. You are allowed to query your Jira api every ~20s
-5. You're current priority exclusion only includes ID 4 (will be configurable in the near future) 
 
 Most of the assumptions above are subject to change, when those values will become configurable. 
 
