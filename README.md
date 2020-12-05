@@ -1,6 +1,6 @@
 # JiraAlert
 This tool offers a simple but monitored way to check a given filter for issues and send a webhook message to your mattermost
-server if it's priority doesn't match a given ID.
+server if a new one appears in the list.
 
 **Example usecase:** Monitoring and alerting for high and medium priority tickets within a Jira Servicedesk queue.
 
@@ -12,7 +12,6 @@ Since this tool is currently still under development, some assumptions had to be
 2. You have a user able to use the Jira api
 3. You want to be notified via a message in a Mattermost channel
 4. You are allowed to query your Jira api every ~20s
-5. You're current priority exclusion only includes ID 4 (will be configurable in the near future) 
 
 Most of the assumptions above are subject to change, when those values will become configurable. 
 
@@ -25,7 +24,10 @@ The following values have to be present inside a .env file inside the applicatio
 |JIRA_PASSWORD|The corresponding password the application will use to query Jira (required)|
 |JIRA_FILTER_ID|The numeric ID of the filter the application will query (required)|
 |JIRA_URL|The base url of the Jira instance that should be queried (required)|
+|JIRA_CHECK_INTERVAL|The numeric interval in seconds in which Jira will be queried (required)|
 |WEBHOOK_ULR|The mattermost webhook that should be notified when an alert happens (required)|
+|PROMETHEUS_PORT|The numeric port on which the Prometheus endpoint will be available (use 2112 if unsure) (required)|
+
 
 ## Installation
 At the current point in time no prebuild packages are offered, but you can build the application from source.
@@ -42,9 +44,10 @@ be used by a prometheus server to keep taps on this application.
 
 ## Roadmap
 The following (in no particular order) things _should_ be done to improve this application:
+- [x] Add more configurable values
+- [ ] Make the application able to run inside a container (Docker)
+- [ ] Auto recovery when connection to Mattermost or Jira failed
 - [ ] Add Slack support
 - [ ] Add support for OAuth based authentication for jira
-- [ ] Add more configurable values
 - [ ] Split the application in smaller chunks
-- [ ] Make the application able to run inside a container (Docker)
 - [ ] Buy Elrathor some cookies
