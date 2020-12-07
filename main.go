@@ -59,13 +59,13 @@ func main() {
 	cv = ConfigValues.ConfigValues{}
 	cv.LoadAndValidateConfig()
 
-	markImmediatelyAsKnown = cv.DoInitialPost
-
 	log.Println("Initialize application")
 	tp := jira.BasicAuthTransport{
 		Username: cv.JiraUsername,
 		Password: cv.JiraPassword,
 	}
+
+	markImmediatelyAsKnown = !cv.DoInitialPost
 
 	client, err := jira.NewClient(tp.Client(), cv.JiraUrl)
 	if err != nil {
@@ -138,7 +138,7 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
 		for _, issue := range alerts {
 
 			message := MatterHook{
-				Text: ":rotating_light:  **" + issue.Fields.Priority.Name + "** " + issue.Key + " " + issue.Fields.Summary,
+				Text: ":rotating_light:  **" + issue.Fields.Priority.Name + "** " + issue.Key + " " + issue.Fields.Summary + " [[Link](" + cv.JiraUrl + "/browse/" + issue.Key + ")]",
 			}
 
 			messageJson, _ := json.Marshal(message)
