@@ -2,6 +2,7 @@ package main
 
 import (
 	ConfigValues "JiraAlert/Config"
+	"JiraAlert/Util"
 	"bytes"
 	"encoding/json"
 	"github.com/andygrunwald/go-jira"
@@ -17,6 +18,7 @@ import (
 //Global Values
 var knownIssues []string
 var cv ConfigValues.ConfigValues
+var markImmediatelyAsKnown bool //If set true, the next run will skip the alerting and mark an issue immediately as known. Will be auto reset.
 
 //Prometheus Metrics
 var (
@@ -57,52 +59,36 @@ func main() {
 	cv = ConfigValues.ConfigValues{}
 	cv.LoadAndValidateConfig()
 
-	log.Println("Initialize application")
-	tp := jira.BasicAuthTransport{
-		Username: cv.JiraUsername,
-		Password: cv.JiraPassword,
-	}
+	markImmediatelyAsKnown = cv.DoInitialPost
 
-	client, err := jira.NewClient(tp.Client(), cv.JiraUrl)
-	if err != nil {
-		log.Fatal(err)
-	}
+    client, err := jira.NewClient(tp.Client(), cv.JiraUrl)
+    if err != nil {
+        log.Fatal(err)
+    }
 
-	filter, _, err := client.Filter.Get(cv.JiraFilterId)
+    filter, _, err := client.Filter.Get(cv.JiraFilterId)
 
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		log.Println("Using filter: " + filter.Name)
-	}
+    if err != nil {
+        log.Fatal(err)
+    } else {
+        log.Println("Using filter: " + filter.Name)
+    }
 
-	log.Println("Initialize monitoring")
-	http.Handle("/metrics", promhttp.Handler())
+    log.Println("Initialize monitoring")
+    http.Handle("/metrics", promhttp.Handler())
 
-	log.Println("Start watcher")
-	finished := make(chan bool)
-	go heartBeat(finished, client, filter)
+    log.Println("Start watcher")
+    finished := make(chan bool)
+    go heartBeat(finished, client, filter)
 
-	log.Println("Starting monitoring")
-	err = http.ListenAndServe(":"+strconv.Itoa(cv.PrometheusPort), nil)
+    log.Println("Starting monitoring")
+    err = http.ListenAndServe(":"+strconv.Itoa(cv.PrometheusPort), nil)
 
-	if err != nil {
-		log.Fatal(err)
-	}
+    if err != nil {
+        log.Fatal(err)
+    }
 
-	<-finished //Wait forever ;)
-}
-
-// https://play.golang.org/p/Qg_uv_inCek
-// contains checks if a string is present in a slice
-func contains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
-		}
-	}
-
-	return false
+    <-finished //Wait forever ;)
 }
 
 func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
@@ -125,11 +111,18 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
 
 		//Check if issue is already know if not set it to alert list and mark as know
 		for _, issue := range issues {
-			if !contains(knownIssues, issue.Key) {
-				alerts = append(alerts, issue)
+			if !Util.Contains(knownIssues, issue.Key) {
+
+				//Marks the issues as known, without writing an alert.
+				if !markImmediatelyAsKnown {
+					alerts = append(alerts, issue)
+				}
+
 				knownIssues = append(knownIssues, issue.Key)
 			}
 		}
+
+		markImmediatelyAsKnown = false
 
 		if prevNumberOfKnownIssues != len(knownIssues) {
 			log.Println("Number of known issues: " + strconv.Itoa(len(knownIssues)))

@@ -1,6 +1,7 @@
 package ConfigValues
 
 import (
+    "JiraAlert/Util"
     "github.com/joho/godotenv"
     "log"
     "os"
@@ -22,6 +23,7 @@ type ConfigValues struct {
     WebhookUrlKey string
     PrometheusPort int
     PrometheusPortKey string
+    DoInitialPost     bool
 }
 
 func (cv *ConfigValues) registerKeys() {
@@ -80,6 +82,16 @@ func (cv *ConfigValues) LoadAndValidateConfig() {
     cv.PrometheusPort, err = strconv.Atoi(prometheusPortString)
     if err != nil {
         log.Fatal(cv.PrometheusPortKey + " has to be a numeric value in seconds")
+    }
+
+    log.Println("Reading command line arguments")
+    args := os.Args[:1]
+    if Util.Contains(args, "--NoInitialPost") {
+        cv.DoInitialPost = false
+        log.Println("Initial post to mattermost: disabled")
+    } else {
+        cv.DoInitialPost = true
+        log.Println("Initial post to mattermost: enabled")
     }
 }
 
