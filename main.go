@@ -1,170 +1,169 @@
 package main
 
 import (
-    ConfigValues "JiraAlert/Config"
-    "bytes"
-    "encoding/json"
-    "github.com/andygrunwald/go-jira"
-    "github.com/prometheus/client_golang/prometheus"
-    "github.com/prometheus/client_golang/prometheus/promauto"
-    "github.com/prometheus/client_golang/prometheus/promhttp"
-    "log"
-    "net/http"
-    "strconv"
-    "time"
+	ConfigValues "JiraAlert/Config"
+	"JiraAlert/Util"
+	"bytes"
+	"encoding/json"
+	"github.com/andygrunwald/go-jira"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"log"
+	"net/http"
+	"strconv"
+	"time"
 )
 
 //Global Values
 var knownIssues []string
 var cv ConfigValues.ConfigValues
+var markImmediatelyAsKnown bool //If set true, the next run will skip the alerting and mark an issue immediately as known. Will be auto reset.
 
 //Prometheus Metrics
 var (
-    jiraRequestDuration = promauto.NewHistogram(prometheus.HistogramOpts{
-        Name: "jiraalert_jira_request_duration",
-        Help: "The time it took to query the jira api",
-    })
+	jiraRequestDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name: "jiraalert_jira_request_duration",
+		Help: "The time it took to query the jira api",
+	})
 )
 
 var (
-    jiraCallsMade = promauto.NewCounter(prometheus.CounterOpts{
-        Name: "jiraalert_jira_calls_made",
-        Help: "The total number of requests made to the jira api",
-    })
+	jiraCallsMade = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "jiraalert_jira_calls_made",
+		Help: "The total number of requests made to the jira api",
+	})
 )
 
 var (
-    mattermostRequestDuration = promauto.NewHistogram(prometheus.HistogramOpts{
-        Name: "jiraalert_mattermost_request_duration",
-        Help: "The time it took to send the mattermost webhook request",
-    })
+	mattermostRequestDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name: "jiraalert_mattermost_request_duration",
+		Help: "The time it took to send the mattermost webhook request",
+	})
 )
 
 var (
-    mattermostCallsMade = promauto.NewCounter(prometheus.CounterOpts{
-        Name: "jiraalert_mattermost_calls_made",
-        Help: "The total number of requests made to the mattermost webhook",
-    })
+	mattermostCallsMade = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "jiraalert_mattermost_calls_made",
+		Help: "The total number of requests made to the mattermost webhook",
+	})
 )
 
 // Struct for json marshaling
 type MatterHook struct {
-    Text string
+	Text string
 }
 
 func main() {
 
-    cv = ConfigValues.ConfigValues{}
-    cv.LoadAndValidateConfig()
+	cv = ConfigValues.ConfigValues{}
+	cv.LoadAndValidateConfig()
 
-    log.Println("Initialize application")
-    tp := jira.BasicAuthTransport{
-        Username: cv.JiraUsername,
-        Password: cv.JiraPassword,
-    }
+	markImmediatelyAsKnown = cv.DoInitialPost
 
-    client, err := jira.NewClient(tp.Client(), cv.JiraUrl)
-    if err != nil {
-        log.Fatal(err)
-    }
+	log.Println("Initialize application")
+	tp := jira.BasicAuthTransport{
+		Username: cv.JiraUsername,
+		Password: cv.JiraPassword,
+	}
 
-    filter, _, err := client.Filter.Get(cv.JiraFilterId)
+	client, err := jira.NewClient(tp.Client(), cv.JiraUrl)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    if err != nil {
-        log.Fatal(err)
-    } else {
-        log.Println("Using filter: " + filter.Name)
-    }
+	filter, _, err := client.Filter.Get(cv.JiraFilterId)
 
-    log.Println("Initialize monitoring")
-    http.Handle("/metrics", promhttp.Handler())
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		log.Println("Using filter: " + filter.Name)
+	}
 
-    log.Println("Start watcher")
-    finished := make(chan bool)
-    go heartBeat(finished, client, filter)
+	log.Println("Initialize monitoring")
+	http.Handle("/metrics", promhttp.Handler())
 
-    log.Println("Starting monitoring")
-    err = http.ListenAndServe(":"+strconv.Itoa(cv.PrometheusPort), nil)
+	log.Println("Start watcher")
+	finished := make(chan bool)
+	go heartBeat(finished, client, filter)
 
-    if err != nil {
-        log.Fatal(err)
-    }
+	log.Println("Starting monitoring")
+	err = http.ListenAndServe(":"+strconv.Itoa(cv.PrometheusPort), nil)
 
-    <-finished //Wait forever ;)
-}
+	if err != nil {
+		log.Fatal(err)
+	}
 
-// https://play.golang.org/p/Qg_uv_inCek
-// contains checks if a string is present in a slice
-func contains(s []string, str string) bool {
-    for _, v := range s {
-        if v == str {
-            return true
-        }
-    }
-
-    return false
+	<-finished //Wait forever ;)
 }
 
 func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
-    for range time.Tick(time.Second * time.Duration(cv.JiraCheckInterval)) {
-        stopWatch := time.Now()
+	for range time.Tick(time.Second * time.Duration(cv.JiraCheckInterval)) {
+		stopWatch := time.Now()
 
-        issues, _, err := client.Issue.Search(filter.Jql, nil)
+		issues, _, err := client.Issue.Search(filter.Jql, nil)
 
-        stopWatchTimeElapsed := time.Since(stopWatch)
-        jiraRequestDuration.Observe(stopWatchTimeElapsed.Seconds())
+		stopWatchTimeElapsed := time.Since(stopWatch)
+		jiraRequestDuration.Observe(stopWatchTimeElapsed.Seconds())
 
-        if err != nil {
-            panic(err)
-        } else {
-            jiraCallsMade.Inc()
-        }
+		if err != nil {
+			panic(err)
+		} else {
+			jiraCallsMade.Inc()
+		}
 
-        var alerts []jira.Issue
-        prevNumberOfKnownIssues := len(knownIssues)
+		var alerts []jira.Issue
+		prevNumberOfKnownIssues := len(knownIssues)
 
-        //Check if issue is already know if not set it to alert list and mark as know
-        for _, issue := range issues {
-            if !contains(knownIssues, issue.Key) {
-                alerts = append(alerts, issue)
-                knownIssues = append(knownIssues, issue.Key)
-            }
-        }
+		//Check if issue is already know if not set it to alert list and mark as know
+		for _, issue := range issues {
+			if !Util.Contains(knownIssues, issue.Key) {
 
-        if prevNumberOfKnownIssues != len(knownIssues){
-            log.Println("Number of known issues: " + strconv.Itoa(len(knownIssues)))
-        }
+				//Marks the issues as known, without writing an alert.
+				if !markImmediatelyAsKnown {
+					alerts = append(alerts, issue)
+				}
 
-        //Alert for new issues
-        for _, issue := range alerts {
+				knownIssues = append(knownIssues, issue.Key)
+			}
+		}
 
-                message := MatterHook{
-                    Text: ":rotating_light:  **" + issue.Fields.Priority.Name + "** " + issue.Key + " " + issue.Fields.Summary,
-                }
+		markImmediatelyAsKnown = false
 
-                messageJson, _ := json.Marshal(message)
-                req, err := http.NewRequest("POST", cv.WebhookUrl, bytes.NewBuffer(messageJson))
-                req.Header.Set("Content-Type", "application/json")
+		if prevNumberOfKnownIssues != len(knownIssues) {
+			log.Println("Number of known issues: " + strconv.Itoa(len(knownIssues)))
+		}
 
-                matterMostClient := &http.Client{}
+		//Alert for new issues
+		for _, issue := range alerts {
 
-                stopWatch = time.Now()
+			message := MatterHook{
+				Text: ":rotating_light:  **" + issue.Fields.Priority.Name + "** " + issue.Key + " " + issue.Fields.Summary,
+			}
 
-                resp, err := matterMostClient.Do(req)
+			messageJson, _ := json.Marshal(message)
+			req, err := http.NewRequest("POST", cv.WebhookUrl, bytes.NewBuffer(messageJson))
+			req.Header.Set("Content-Type", "application/json")
 
-                stopWatchTimeElapsed = time.Since(stopWatch)
-                mattermostRequestDuration.Observe(float64(stopWatchTimeElapsed.Seconds()))
+			matterMostClient := &http.Client{}
 
-                if err != nil {
-                    panic(err)
-                } else {
-                    mattermostCallsMade.Inc()
-                }
-                defer resp.Body.Close()
-        }
-    }
+			stopWatch = time.Now()
 
-    //Will never be reached!
-    log.Println("The cake is a lie and by the way: You should never have been able to get here! How did you do it?")
-    finished <- true
+			resp, err := matterMostClient.Do(req)
+
+			stopWatchTimeElapsed = time.Since(stopWatch)
+			mattermostRequestDuration.Observe(float64(stopWatchTimeElapsed.Seconds()))
+
+			if err != nil {
+				panic(err)
+			} else {
+				mattermostCallsMade.Inc()
+			}
+			defer resp.Body.Close()
+		}
+	}
+
+	//Will never be reached!
+	log.Println("The cake is a lie and by the way: You should never have been able to get here! How did you do it?")
+	finished <- true
 }
