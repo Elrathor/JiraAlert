@@ -49,6 +49,6 @@ The following (in no particular order) things _should_ be done to improve this a
 - [ ] Auto recovery when connection to Mattermost or Jira failed
 - [ ] Add Slack support
 - [ ] Add support for OAuth / Token based authentication for jira
-- [ ] publish issue Counter via Prometheus to display it on graphana
+- [ ] publish issue Counter via Prometheus to display it on Graphana dashboards
 - [ ] Split the application in smaller chunks
 - [ ] Buy Elrathor some cookies
