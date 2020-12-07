@@ -6,6 +6,9 @@ server if a new one appears in the list.
 
 If there's a feature missing for you, just let me know via a [feature request](https://github.com/Elrathor/JiraAlert/issues/new/choose)
 
+# Versioning
+I would consider this bot to be in it's beta phase at the moment. The first version after that will be 1.0.0 until then I **wouldn't** recommend to use it in production.
+
 ## Assumptions
 Since this tool is currently still under development, some assumptions had to be made:
 1. You use a current, on premise version of Jira which still supports password based api login
