@@ -59,36 +59,42 @@ func main() {
 	cv = ConfigValues.ConfigValues{}
 	cv.LoadAndValidateConfig()
 
-	markImmediatelyAsKnown = cv.DoInitialPost
+	log.Println("Initialize application")
+	tp := jira.BasicAuthTransport{
+		Username: cv.JiraUsername,
+		Password: cv.JiraPassword,
+	}
 
-    client, err := jira.NewClient(tp.Client(), cv.JiraUrl)
-    if err != nil {
-        log.Fatal(err)
-    }
+	markImmediatelyAsKnown = !cv.DoInitialPost
 
-    filter, _, err := client.Filter.Get(cv.JiraFilterId)
+	client, err := jira.NewClient(tp.Client(), cv.JiraUrl)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    if err != nil {
-        log.Fatal(err)
-    } else {
-        log.Println("Using filter: " + filter.Name)
-    }
+	filter, _, err := client.Filter.Get(cv.JiraFilterId)
 
-    log.Println("Initialize monitoring")
-    http.Handle("/metrics", promhttp.Handler())
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		log.Println("Using filter: " + filter.Name)
+	}
 
-    log.Println("Start watcher")
-    finished := make(chan bool)
-    go heartBeat(finished, client, filter)
+	log.Println("Initialize monitoring")
+	http.Handle("/metrics", promhttp.Handler())
 
-    log.Println("Starting monitoring")
-    err = http.ListenAndServe(":"+strconv.Itoa(cv.PrometheusPort), nil)
+	log.Println("Start watcher")
+	finished := make(chan bool)
+	go heartBeat(finished, client, filter)
 
-    if err != nil {
-        log.Fatal(err)
-    }
+	log.Println("Starting monitoring")
+	err = http.ListenAndServe(":"+strconv.Itoa(cv.PrometheusPort), nil)
 
-    <-finished //Wait forever ;)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	<-finished //Wait forever ;)
 }
 
 func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
