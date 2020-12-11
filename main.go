@@ -36,6 +36,13 @@ var (
 )
 
 var (
+	jiraCallsError = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "jiraalert_jira_calls_errored",
+		Help: "The total number of requests made to the jira api that resulted in an error",
+	})
+)
+
+var (
 	mattermostRequestDuration = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name: "jiraalert_mattermost_request_duration",
 		Help: "The time it took to send the mattermost webhook request",
@@ -46,6 +53,13 @@ var (
 	mattermostCallsMade = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "jiraalert_mattermost_calls_made",
 		Help: "The total number of requests made to the mattermost webhook",
+	})
+)
+
+var (
+	mattermostCallsError = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "jiraalert_mattermost_calls_errored",
+		Help: "The total number of requests made to the mattermost webhook that resulted in an error",
 	})
 )
 
@@ -105,11 +119,12 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
 
 		stopWatchTimeElapsed := time.Since(stopWatch)
 		jiraRequestDuration.Observe(stopWatchTimeElapsed.Seconds())
+		jiraCallsMade.Inc()
 
 		if err != nil {
-			panic(err)
-		} else {
-			jiraCallsMade.Inc()
+			log.Println(err)
+			jiraCallsError.Inc()
+			continue
 		}
 
 		var alerts []jira.Issue
@@ -154,11 +169,14 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
 			stopWatchTimeElapsed = time.Since(stopWatch)
 			mattermostRequestDuration.Observe(float64(stopWatchTimeElapsed.Seconds()))
 
+			mattermostCallsMade.Inc()
+
 			if err != nil {
-				panic(err)
-			} else {
-				mattermostCallsMade.Inc()
+				log.Println(err)
+				mattermostCallsError.Inc()
+				continue
 			}
+
 			defer resp.Body.Close()
 		}
 	}
