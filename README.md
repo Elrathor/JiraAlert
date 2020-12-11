@@ -51,7 +51,7 @@ be used by a prometheus server to keep taps on this application.
 The following (in no particular order) things _should_ be done to improve this application:
 - [x] Add more configurable values
 - [ ] Make the application able to run inside a container (Docker)
-- [ ] Auto recovery when connection to Mattermost or Jira failed
+- [x] Auto recovery when connection to Mattermost or Jira failed
 - [x] Add link to issue to Mattermost notification
 - [ ] Add Slack support
 - [ ] Add support for OAuth / Token based authentication for jira
