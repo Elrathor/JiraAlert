@@ -1,7 +1,7 @@
 package main
 
 import (
-	ConfigValues "JiraAlert/Config"
+	ConfigProvider "JiraAlert/Config"
 	"JiraAlert/Util"
 	"bytes"
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"strconv"
@@ -17,8 +18,9 @@ import (
 
 //Global Values
 var knownIssues []string
-var cv ConfigValues.ConfigValues
+var cp ConfigProvider.ConfigProvider
 var markImmediatelyAsKnown bool //If set true, the next run will skip the alerting and mark an issue immediately as known. Will be auto reset.
+var logger *zap.Logger
 
 //Prometheus Metrics
 var (
@@ -69,50 +71,56 @@ type MatterHook struct {
 }
 
 func main() {
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	cv = ConfigValues.ConfigValues{}
-	cv.LoadAndValidateConfig()
+	defer logger.Sync()
 
-	log.Println("Initialize application")
+	cp = ConfigProvider.NewConfigProvider(logger)
+	cp.LoadAndValidateConfig()
+
+	logger.Info("Initialize application")
 	tp := jira.BasicAuthTransport{
-		Username: cv.JiraUsername,
-		Password: cv.JiraPassword,
+		Username: cp.JiraUsername,
+		Password: cp.JiraPassword,
 	}
 
-	markImmediatelyAsKnown = !cv.DoInitialPost
+	markImmediatelyAsKnown = !cp.DoInitialPost
 
-	client, err := jira.NewClient(tp.Client(), cv.JiraUrl)
+	client, err := jira.NewClient(tp.Client(), cp.JiraUrl)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err.Error())
 	}
 
-	filter, _, err := client.Filter.Get(cv.JiraFilterId)
+	filter, _, err := client.Filter.Get(cp.JiraFilterId)
 
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err.Error())
 	} else {
-		log.Println("Using filter: " + filter.Name)
+		logger.Info("Using filter: " + filter.Name)
 	}
 
-	log.Println("Initialize monitoring")
+	logger.Info("Initialize monitoring")
 	http.Handle("/metrics", promhttp.Handler())
 
-	log.Println("Start watcher")
+	logger.Info("Start watcher")
 	finished := make(chan bool)
 	go heartBeat(finished, client, filter)
 
-	log.Println("Starting monitoring")
-	err = http.ListenAndServe(":"+strconv.Itoa(cv.PrometheusPort), nil)
+	logger.Info("Starting monitoring")
+	err = http.ListenAndServe(":"+strconv.Itoa(cp.PrometheusPort), nil)
 
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err.Error())
 	}
 
 	<-finished //Wait forever ;)
 }
 
 func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
-	for range time.Tick(time.Second * time.Duration(cv.JiraCheckInterval)) {
+	for range time.Tick(time.Second * time.Duration(cp.JiraCheckInterval)) {
 		stopWatch := time.Now()
 
 		issues, _, err := client.Issue.Search(filter.Jql, nil)
@@ -122,7 +130,7 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
 		jiraCallsMade.Inc()
 
 		if err != nil {
-			log.Println(err)
+			logger.Error(err.Error())
 			jiraCallsError.Inc()
 			continue
 		}
@@ -146,18 +154,18 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
 		markImmediatelyAsKnown = false
 
 		if prevNumberOfKnownIssues != len(knownIssues) {
-			log.Println("Number of known issues: " + strconv.Itoa(len(knownIssues)))
+			logger.Info("Number of known issues: " + strconv.Itoa(len(knownIssues)))
 		}
 
 		//Alert for new issues
 		for _, issue := range alerts {
 
 			message := MatterHook{
-				Text: ":rotating_light:  **" + issue.Fields.Priority.Name + "** " + issue.Key + " " + issue.Fields.Summary + " [[Link](" + cv.JiraUrl + "/browse/" + issue.Key + ")]",
+				Text: ":rotating_light:  **" + issue.Fields.Priority.Name + "** " + issue.Key + " " + issue.Fields.Summary + " [[Link](" + cp.JiraUrl + "/browse/" + issue.Key + ")]",
 			}
 
 			messageJson, _ := json.Marshal(message)
-			req, err := http.NewRequest("POST", cv.WebhookUrl, bytes.NewBuffer(messageJson))
+			req, err := http.NewRequest("POST", cp.WebhookUrl, bytes.NewBuffer(messageJson))
 			req.Header.Set("Content-Type", "application/json")
 
 			matterMostClient := &http.Client{}
@@ -172,7 +180,7 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
 			mattermostCallsMade.Inc()
 
 			if err != nil {
-				log.Println(err)
+				logger.Info(err.Error())
 				mattermostCallsError.Inc()
 				continue
 			}
@@ -182,6 +190,6 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
 	}
 
 	//Will never be reached!
-	log.Println("The cake is a lie and by the way: You should never have been able to get here! How did you do it?")
+	logger.Panic("The cake is a lie and by the way: You should never have been able to get here! How did you do it?")
 	finished <- true
 }
