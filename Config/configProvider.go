@@ -56,7 +56,7 @@ func (cp *ConfigProvider) LoadAndValidateConfig() {
 	cp.logger.Info("Reading config")
 	err := godotenv.Load()
 	if err != nil {
-		cp.logger.Fatal("Error loading .env file")
+		cp.logger.Fatal("Error loading .env file", zap.String("error", err.Error()))
 	}
 
 	cp.logger.Info("Validating config values")
