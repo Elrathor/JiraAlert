@@ -50,9 +50,10 @@ be used by a prometheus server to keep taps on this application.
 ## Roadmap
 The following (in no particular order) things _should_ be done to improve this application:
 - [x] Add more configurable values
-- [ ] Make the application able to run inside a container (Docker)
 - [x] Auto recovery when connection to Mattermost or Jira failed
 - [x] Add link to issue to Mattermost notification
+- [x] Moving to machine-readable logging
+- [ ] Make the application able to run inside a container (Docker)
 - [ ] Add Slack support
 - [ ] Add support for OAuth / Token based authentication for jira
 - [ ] publish issue Counter via Prometheus to display it on Graphana dashboards
