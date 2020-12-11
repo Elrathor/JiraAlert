@@ -8,6 +8,7 @@ import (
 	"strconv"
 )
 
+// ConfigProvider allows to pull the application configuration values from a single source
 type ConfigProvider struct {
 	JiraUsername         string
 	JiraUsernameKey      string
@@ -27,6 +28,7 @@ type ConfigProvider struct {
 	logger               *zap.Logger
 }
 
+// NewConfigProvider generates a new configProvider and prefills the logger
 func NewConfigProvider(logger *zap.Logger) (element ConfigProvider) {
 	element = ConfigProvider{
 		logger: logger,
@@ -35,6 +37,7 @@ func NewConfigProvider(logger *zap.Logger) (element ConfigProvider) {
 	return element
 }
 
+// registerKeys stores the configuration keys inside the provider
 func (cp *ConfigProvider) registerKeys() {
 	cp.logger.Info("Registering config keys")
 	cp.JiraFilterIdKey = "JIRA_FILTER_ID"
@@ -46,6 +49,7 @@ func (cp *ConfigProvider) registerKeys() {
 	cp.PrometheusPortKey = "PROMETHEUS_PORT"
 }
 
+// LoadAndValidateConfig takes the registered keys and pulls the configuration values from the .env file
 func (cp *ConfigProvider) LoadAndValidateConfig() {
 	var wasFound bool
 
@@ -103,6 +107,7 @@ func (cp *ConfigProvider) LoadAndValidateConfig() {
 	}
 }
 
+// validateString takes a key value pair and logs the result if wasFound is true or ends the application if wasFound is false
 func (cp *ConfigProvider) validateString(key string, value string, wasFound bool) {
 	if !wasFound {
 		cp.logger.Fatal("Expected config value not found in the .env file", zap.String("key", key))
