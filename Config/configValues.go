@@ -3,7 +3,7 @@ package ConfigValues
 import (
 	"JiraAlert/Util"
 	"github.com/joho/godotenv"
-	"log"
+	"go.uber.org/zap"
 	"os"
 	"strconv"
 )
@@ -24,10 +24,19 @@ type ConfigValues struct {
 	PrometheusPort       int
 	PrometheusPortKey    string
 	DoInitialPost        bool
+	logger               *zap.Logger
+}
+
+func NewConfigValues(logger *zap.Logger) (element ConfigValues) {
+	element = ConfigValues{
+		logger: logger,
+	}
+	element.registerKeys()
+	return element
 }
 
 func (cv *ConfigValues) registerKeys() {
-	log.Println("Registering config keys")
+	cv.logger.Info("Registering config keys")
 	cv.JiraFilterIdKey = "JIRA_FILTER_ID"
 	cv.JiraUsernameKey = "JIRA_USERNAME"
 	cv.JiraPasswordKey = "JIRA_PASSWORD"
@@ -38,16 +47,15 @@ func (cv *ConfigValues) registerKeys() {
 }
 
 func (cv *ConfigValues) LoadAndValidateConfig() {
-	cv.registerKeys()
 	var wasFound bool
 
-	log.Println("Reading config")
+	cv.logger.Info("Reading config")
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		cv.logger.Fatal("Error loading .env file")
 	}
 
-	log.Println("Validate config values")
+	cv.logger.Info("Validating config values")
 	cv.JiraUsername, wasFound = os.LookupEnv(cv.JiraUsernameKey)
 	cv.validateString(cv.JiraUsernameKey, cv.JiraUsername, wasFound)
 
@@ -65,7 +73,7 @@ func (cv *ConfigValues) LoadAndValidateConfig() {
 
 	cv.JiraFilterId, err = strconv.Atoi(filterIdString)
 	if err != nil {
-		log.Fatal(cv.JiraFilterIdKey + " has to be a numeric value")
+		cv.logger.Fatal("The given value has to be numeric", zap.String("key", cv.JiraFilterIdKey))
 	}
 
 	checkIntervalString, wasFound := os.LookupEnv(cv.JiraCheckIntervalKey)
@@ -73,7 +81,7 @@ func (cv *ConfigValues) LoadAndValidateConfig() {
 
 	cv.JiraCheckInterval, err = strconv.Atoi(checkIntervalString)
 	if err != nil {
-		log.Fatal(cv.JiraCheckIntervalKey + " has to be a numeric value in seconds")
+		cv.logger.Fatal("The given value has to be numeric", zap.String("key", cv.JiraCheckIntervalKey))
 	}
 
 	prometheusPortString, wasFound := os.LookupEnv(cv.PrometheusPortKey)
@@ -81,24 +89,24 @@ func (cv *ConfigValues) LoadAndValidateConfig() {
 
 	cv.PrometheusPort, err = strconv.Atoi(prometheusPortString)
 	if err != nil {
-		log.Fatal(cv.PrometheusPortKey + " has to be a numeric value in seconds")
+		cv.logger.Fatal("The given value has to be numeric", zap.String("key", cv.PrometheusPortKey))
 	}
 
-	log.Println("Reading command line arguments")
+	cv.logger.Info("Reading command line arguments")
 	args := os.Args[1:]
 	if Util.Contains(args, "--NoInitialPost") {
 		cv.DoInitialPost = false
-		log.Println("Initial post to mattermost: disabled")
+		cv.logger.Info("Initial post to mattermost", zap.Bool("enabled", false))
 	} else {
 		cv.DoInitialPost = true
-		log.Println("Initial post to mattermost: enabled")
+		cv.logger.Info("Initial post to mattermost", zap.Bool("enabled", true))
 	}
 }
 
 func (cv *ConfigValues) validateString(key string, value string, wasFound bool) {
 	if !wasFound {
-		log.Fatal(key + " has to be present in the .env file")
+		cv.logger.Fatal("Expected config value not found in the .env file", zap.String("key", key))
 	} else {
-		log.Println(key + ": " + value)
+		cv.logger.Info("Read new config value", zap.String("key", key), zap.String("value", value))
 	}
 }
