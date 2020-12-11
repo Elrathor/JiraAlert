@@ -1,4 +1,4 @@
-package ConfigValues
+package ConfigProvider
 
 import (
 	"JiraAlert/Util"
@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-type ConfigValues struct {
+type ConfigProvider struct {
 	JiraUsername         string
 	JiraUsernameKey      string
 	JiraPassword         string
@@ -27,86 +27,86 @@ type ConfigValues struct {
 	logger               *zap.Logger
 }
 
-func NewConfigValues(logger *zap.Logger) (element ConfigValues) {
-	element = ConfigValues{
+func NewConfigProvider(logger *zap.Logger) (element ConfigProvider) {
+	element = ConfigProvider{
 		logger: logger,
 	}
 	element.registerKeys()
 	return element
 }
 
-func (cv *ConfigValues) registerKeys() {
-	cv.logger.Info("Registering config keys")
-	cv.JiraFilterIdKey = "JIRA_FILTER_ID"
-	cv.JiraUsernameKey = "JIRA_USERNAME"
-	cv.JiraPasswordKey = "JIRA_PASSWORD"
-	cv.JiraUrlKey = "JIRA_URL"
-	cv.JiraCheckIntervalKey = "JIRA_CHECK_INTERVAL"
-	cv.WebhookUrlKey = "WEBHOOK_ULR"
-	cv.PrometheusPortKey = "PROMETHEUS_PORT"
+func (cp *ConfigProvider) registerKeys() {
+	cp.logger.Info("Registering config keys")
+	cp.JiraFilterIdKey = "JIRA_FILTER_ID"
+	cp.JiraUsernameKey = "JIRA_USERNAME"
+	cp.JiraPasswordKey = "JIRA_PASSWORD"
+	cp.JiraUrlKey = "JIRA_URL"
+	cp.JiraCheckIntervalKey = "JIRA_CHECK_INTERVAL"
+	cp.WebhookUrlKey = "WEBHOOK_ULR"
+	cp.PrometheusPortKey = "PROMETHEUS_PORT"
 }
 
-func (cv *ConfigValues) LoadAndValidateConfig() {
+func (cp *ConfigProvider) LoadAndValidateConfig() {
 	var wasFound bool
 
-	cv.logger.Info("Reading config")
+	cp.logger.Info("Reading config")
 	err := godotenv.Load()
 	if err != nil {
-		cv.logger.Fatal("Error loading .env file")
+		cp.logger.Fatal("Error loading .env file")
 	}
 
-	cv.logger.Info("Validating config values")
-	cv.JiraUsername, wasFound = os.LookupEnv(cv.JiraUsernameKey)
-	cv.validateString(cv.JiraUsernameKey, cv.JiraUsername, wasFound)
+	cp.logger.Info("Validating config values")
+	cp.JiraUsername, wasFound = os.LookupEnv(cp.JiraUsernameKey)
+	cp.validateString(cp.JiraUsernameKey, cp.JiraUsername, wasFound)
 
-	cv.JiraPassword, wasFound = os.LookupEnv(cv.JiraPasswordKey)
-	cv.validateString(cv.JiraPasswordKey, cv.JiraPassword, wasFound)
+	cp.JiraPassword, wasFound = os.LookupEnv(cp.JiraPasswordKey)
+	cp.validateString(cp.JiraPasswordKey, cp.JiraPassword, wasFound)
 
-	cv.WebhookUrl, wasFound = os.LookupEnv(cv.WebhookUrlKey)
-	cv.validateString(cv.WebhookUrlKey, cv.WebhookUrl, wasFound)
+	cp.WebhookUrl, wasFound = os.LookupEnv(cp.WebhookUrlKey)
+	cp.validateString(cp.WebhookUrlKey, cp.WebhookUrl, wasFound)
 
-	cv.JiraUrl, wasFound = os.LookupEnv(cv.JiraUrlKey)
-	cv.validateString(cv.JiraUrlKey, cv.JiraUrl, wasFound)
+	cp.JiraUrl, wasFound = os.LookupEnv(cp.JiraUrlKey)
+	cp.validateString(cp.JiraUrlKey, cp.JiraUrl, wasFound)
 
-	filterIdString, wasFound := os.LookupEnv(cv.JiraFilterIdKey)
-	cv.validateString(cv.JiraFilterIdKey, filterIdString, wasFound)
+	filterIdString, wasFound := os.LookupEnv(cp.JiraFilterIdKey)
+	cp.validateString(cp.JiraFilterIdKey, filterIdString, wasFound)
 
-	cv.JiraFilterId, err = strconv.Atoi(filterIdString)
+	cp.JiraFilterId, err = strconv.Atoi(filterIdString)
 	if err != nil {
-		cv.logger.Fatal("The given value has to be numeric", zap.String("key", cv.JiraFilterIdKey))
+		cp.logger.Fatal("The given value has to be numeric", zap.String("key", cp.JiraFilterIdKey))
 	}
 
-	checkIntervalString, wasFound := os.LookupEnv(cv.JiraCheckIntervalKey)
-	cv.validateString(cv.JiraCheckIntervalKey, checkIntervalString, wasFound)
+	checkIntervalString, wasFound := os.LookupEnv(cp.JiraCheckIntervalKey)
+	cp.validateString(cp.JiraCheckIntervalKey, checkIntervalString, wasFound)
 
-	cv.JiraCheckInterval, err = strconv.Atoi(checkIntervalString)
+	cp.JiraCheckInterval, err = strconv.Atoi(checkIntervalString)
 	if err != nil {
-		cv.logger.Fatal("The given value has to be numeric", zap.String("key", cv.JiraCheckIntervalKey))
+		cp.logger.Fatal("The given value has to be numeric", zap.String("key", cp.JiraCheckIntervalKey))
 	}
 
-	prometheusPortString, wasFound := os.LookupEnv(cv.PrometheusPortKey)
-	cv.validateString(cv.PrometheusPortKey, prometheusPortString, wasFound)
+	prometheusPortString, wasFound := os.LookupEnv(cp.PrometheusPortKey)
+	cp.validateString(cp.PrometheusPortKey, prometheusPortString, wasFound)
 
-	cv.PrometheusPort, err = strconv.Atoi(prometheusPortString)
+	cp.PrometheusPort, err = strconv.Atoi(prometheusPortString)
 	if err != nil {
-		cv.logger.Fatal("The given value has to be numeric", zap.String("key", cv.PrometheusPortKey))
+		cp.logger.Fatal("The given value has to be numeric", zap.String("key", cp.PrometheusPortKey))
 	}
 
-	cv.logger.Info("Reading command line arguments")
+	cp.logger.Info("Reading command line arguments")
 	args := os.Args[1:]
 	if Util.Contains(args, "--NoInitialPost") {
-		cv.DoInitialPost = false
-		cv.logger.Info("Initial post to mattermost", zap.Bool("enabled", false))
+		cp.DoInitialPost = false
+		cp.logger.Info("Initial post to mattermost", zap.Bool("enabled", false))
 	} else {
-		cv.DoInitialPost = true
-		cv.logger.Info("Initial post to mattermost", zap.Bool("enabled", true))
+		cp.DoInitialPost = true
+		cp.logger.Info("Initial post to mattermost", zap.Bool("enabled", true))
 	}
 }
 
-func (cv *ConfigValues) validateString(key string, value string, wasFound bool) {
+func (cp *ConfigProvider) validateString(key string, value string, wasFound bool) {
 	if !wasFound {
-		cv.logger.Fatal("Expected config value not found in the .env file", zap.String("key", key))
+		cp.logger.Fatal("Expected config value not found in the .env file", zap.String("key", key))
 	} else {
-		cv.logger.Info("Read new config value", zap.String("key", key), zap.String("value", value))
+		cp.logger.Info("Read new config value", zap.String("key", key), zap.String("value", value))
 	}
 }

@@ -1,7 +1,7 @@
 package main
 
 import (
-	ConfigValues "JiraAlert/Config"
+	ConfigProvider "JiraAlert/Config"
 	"JiraAlert/Util"
 	"bytes"
 	"encoding/json"
@@ -18,7 +18,7 @@ import (
 
 //Global Values
 var knownIssues []string
-var cv ConfigValues.ConfigValues
+var cp ConfigProvider.ConfigProvider
 var markImmediatelyAsKnown bool //If set true, the next run will skip the alerting and mark an issue immediately as known. Will be auto reset.
 var logger *zap.Logger
 
@@ -78,23 +78,23 @@ func main() {
 
 	defer logger.Sync()
 
-	cv = ConfigValues.NewConfigValues(logger)
-	cv.LoadAndValidateConfig()
+	cp = ConfigProvider.NewConfigProvider(logger)
+	cp.LoadAndValidateConfig()
 
 	logger.Info("Initialize application")
 	tp := jira.BasicAuthTransport{
-		Username: cv.JiraUsername,
-		Password: cv.JiraPassword,
+		Username: cp.JiraUsername,
+		Password: cp.JiraPassword,
 	}
 
-	markImmediatelyAsKnown = !cv.DoInitialPost
+	markImmediatelyAsKnown = !cp.DoInitialPost
 
-	client, err := jira.NewClient(tp.Client(), cv.JiraUrl)
+	client, err := jira.NewClient(tp.Client(), cp.JiraUrl)
 	if err != nil {
 		logger.Fatal(err.Error())
 	}
 
-	filter, _, err := client.Filter.Get(cv.JiraFilterId)
+	filter, _, err := client.Filter.Get(cp.JiraFilterId)
 
 	if err != nil {
 		logger.Fatal(err.Error())
@@ -110,7 +110,7 @@ func main() {
 	go heartBeat(finished, client, filter)
 
 	logger.Info("Starting monitoring")
-	err = http.ListenAndServe(":"+strconv.Itoa(cv.PrometheusPort), nil)
+	err = http.ListenAndServe(":"+strconv.Itoa(cp.PrometheusPort), nil)
 
 	if err != nil {
 		logger.Fatal(err.Error())
@@ -120,7 +120,7 @@ func main() {
 }
 
 func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
-	for range time.Tick(time.Second * time.Duration(cv.JiraCheckInterval)) {
+	for range time.Tick(time.Second * time.Duration(cp.JiraCheckInterval)) {
 		stopWatch := time.Now()
 
 		issues, _, err := client.Issue.Search(filter.Jql, nil)
@@ -161,11 +161,11 @@ func heartBeat(finished chan bool, client *jira.Client, filter *jira.Filter) {
 		for _, issue := range alerts {
 
 			message := MatterHook{
-				Text: ":rotating_light:  **" + issue.Fields.Priority.Name + "** " + issue.Key + " " + issue.Fields.Summary + " [[Link](" + cv.JiraUrl + "/browse/" + issue.Key + ")]",
+				Text: ":rotating_light:  **" + issue.Fields.Priority.Name + "** " + issue.Key + " " + issue.Fields.Summary + " [[Link](" + cp.JiraUrl + "/browse/" + issue.Key + ")]",
 			}
 
 			messageJson, _ := json.Marshal(message)
-			req, err := http.NewRequest("POST", cv.WebhookUrl, bytes.NewBuffer(messageJson))
+			req, err := http.NewRequest("POST", cp.WebhookUrl, bytes.NewBuffer(messageJson))
 			req.Header.Set("Content-Type", "application/json")
 
 			matterMostClient := &http.Client{}
