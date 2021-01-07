@@ -54,6 +54,7 @@ The following (in no particular order) things _should_ be done to improve this a
 - [x] Add link to issue to Mattermost notification
 - [x] Moving to machine-readable logging
 - [ ] Make the application able to run inside a container (Docker)
+- [ ] Add Microsoft Teams support
 - [ ] Add Slack support
 - [ ] Add support for OAuth / Token based authentication for jira
 - [ ] publish issue Counter via Prometheus to display it on Graphana dashboards
